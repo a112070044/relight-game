@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>拾光翻牌挑戰</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
@@ -29,6 +29,7 @@
     font-family:'Noto Sans TC',sans-serif;
     padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
     min-height:100%; overflow-x:hidden;
+    -webkit-user-select:none; user-select:none; touch-action:manipulation;
   }
   .wrap{max-width:640px;margin:0 auto;padding:26px 18px 60px; position:relative;}
   .brandline{display:flex; align-items:center; gap:8px; margin-bottom:4px;}
@@ -37,7 +38,7 @@
   h1{font-family:'Noto Serif TC',serif; font-weight:700; font-size:1.6rem; margin:6px 0 6px;}
   .sub{color:var(--ink-soft); font-size:.9rem; line-height:1.6; margin:0 0 18px;}
 
-  .diff-row{display:flex; gap:8px; margin-bottom:18px; flex-wrap:wrap;}
+  .diff-row{display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;}
   .diff-btn{
     flex:1; min-width:88px; background:var(--card); border:2px solid var(--paper-2);
     border-radius:14px; padding:10px 8px; text-align:center; cursor:pointer;
@@ -47,6 +48,31 @@
   .diff-btn span{font-size:.72rem; color:var(--ink-soft);}
   .diff-btn.active{border-color:var(--brand); transform:translateY(-2px);}
   .diff-btn.active b{color:var(--brand);}
+
+  .name-row{margin-bottom:16px;}
+  .name-row label{display:block; font-size:.8rem; color:var(--ink-soft); margin-bottom:6px;}
+  .name-row input{
+    width:100%; padding:11px 14px; border-radius:12px; border:2px solid var(--paper-2);
+    background:var(--card); color:var(--ink); font-size:1rem; font-family:'Noto Sans TC',sans-serif;
+    -webkit-user-select:text; user-select:text;
+  }
+  .name-row input:focus{ outline:none; border-color:var(--brand); }
+
+  .board-block{ display:block; }
+  .board-block.hidden{ display:none; }
+
+  .leaderboard{
+    background:var(--card); border:1px solid var(--paper-2); border-radius:14px;
+    padding:12px 14px; margin-bottom:18px;
+  }
+  .leaderboard h3{
+    font-family:'Noto Serif TC',serif; font-size:.95rem; margin:0 0 8px; color:var(--brand);
+  }
+  .lb-row{ display:flex; justify-content:space-between; font-size:.85rem; padding:4px 0; }
+  .lb-row .rank{ color:var(--ink-soft); width:22px; }
+  .lb-row .name{ flex:1; }
+  .lb-row .time{ font-weight:700; color:var(--brand-soft); }
+  .lb-empty{ color:var(--ink-soft); font-size:.82rem; }
 
   .hud{display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;
        font-size:.95rem; font-weight:700;}
@@ -88,14 +114,13 @@
   .face.front .emoji{font-size:1.4rem;}
   .card.matched .face.front{
     border-color:var(--hit); background:color-mix(in srgb, var(--hit) 12%, var(--card));
-    animation:matchPop .45s ease-out;
-  }
-  @keyframes matchPop{
-    0%{ transform:scale(1); }
-    40%{ transform:scale(1.14) rotateY(180deg); }
-    100%{ transform:scale(1) rotateY(180deg); }
   }
   .card.matched .card-inner{ animation:matchPop .45s ease-out; }
+  @keyframes matchPop{
+    0%{ transform:rotateY(180deg) scale(1); }
+    40%{ transform:rotateY(180deg) scale(1.14); }
+    100%{ transform:rotateY(180deg) scale(1); }
+  }
 
   .confetti-bit{
     position:absolute; top:50%; left:50%; font-size:1rem; pointer-events:none;
@@ -130,9 +155,14 @@
   }
   .panel h2{font-family:'Noto Serif TC',serif; margin:0 0 6px; color:var(--brand);}
   .panel .stat{color:var(--brand-soft); font-weight:700;}
+  .record-badge{
+    display:inline-block; background:var(--hit); color:#fff; font-size:.78rem; font-weight:700;
+    padding:4px 10px; border-radius:999px; margin-bottom:8px;
+  }
   .reason{background:var(--card); border-radius:10px; padding:10px 12px; margin-top:8px; font-size:.85rem; line-height:1.6; border:1px solid var(--paper-2);}
   .reason b{color:var(--brand);}
   .closing{margin-top:16px; font-size:.87rem; color:var(--ink-soft); line-height:1.7;}
+  .auto-note{margin-top:14px; font-size:.78rem; color:var(--ink-soft);}
 
   .fall-confetti{
     position:absolute; top:-20px; font-size:1.1rem; z-index:1;
@@ -161,6 +191,13 @@
 
   <div class="diff-row" id="diffRow"></div>
 
+  <div class="name-row" id="nameRow">
+    <label for="nameInput">你的稱呼（會出現在排行榜上）</label>
+    <input type="text" id="nameInput" maxlength="8" placeholder="例如：小拾">
+  </div>
+
+  <div class="leaderboard" id="leaderboard"></div>
+
   <div class="hud">
     <span class="timer" id="timer">60</span>
     <span class="moves" id="moves">翻牌次數 0</span>
@@ -177,12 +214,14 @@
 <div class="overlay" id="overlay">
   <div class="panel">
     <h2 id="resultTitle">結果</h2>
+    <div id="recordBadge"></div>
     <p id="resultStat" class="stat"></p>
     <div id="reasons"></div>
     <p class="closing">拾光地圖也是這樣：不只是把「有的」跟「要的」湊在一起，而是理解物品背後的故事，找到真正適合它的下一個主人。</p>
     <div class="actions">
       <button class="primary" id="playAgainBtn">再玩一次</button>
     </div>
+    <p class="auto-note" id="autoNote"></p>
   </div>
 </div>
 
@@ -203,13 +242,18 @@ const DIFFS = {
   medium: {label:"中等", pairs:6, time:60},
   hard:   {label:"困難", pairs:8, time:45}
 };
+const LB_KEY = 'relight_flip_leaderboard_v1';
+const AUTO_RESTART_SECONDS = 8;
 
 let currentDiff = 'medium';
 let activePairs = [];
 let deck = [], flippedCards = [], matchedCount = 0, moves = 0, timeLeft = 60, timerId = null, locked = false;
+let autoTimerId = null, autoCountdown = 0;
 
 const wrapEl = document.getElementById('wrap');
 const diffRow = document.getElementById('diffRow');
+const nameInput = document.getElementById('nameInput');
+const leaderboardEl = document.getElementById('leaderboard');
 const gridEl = document.getElementById('grid');
 const timerEl = document.getElementById('timer');
 const movesEl = document.getElementById('moves');
@@ -217,7 +261,44 @@ const overlay = document.getElementById('overlay');
 const reasonsEl = document.getElementById('reasons');
 const resultTitle = document.getElementById('resultTitle');
 const resultStat = document.getElementById('resultStat');
+const recordBadge = document.getElementById('recordBadge');
+const autoNote = document.getElementById('autoNote');
 const startBtn = document.getElementById('startBtn');
+
+function loadLB(){
+  try{
+    const raw = localStorage.getItem(LB_KEY);
+    return raw ? JSON.parse(raw) : {easy:[],medium:[],hard:[]};
+  }catch(e){ return {easy:[],medium:[],hard:[]}; }
+}
+function saveLB(data){
+  try{ localStorage.setItem(LB_KEY, JSON.stringify(data)); }catch(e){}
+}
+function renderLeaderboard(){
+  const data = loadLB();
+  const list = data[currentDiff] || [];
+  const cfg = DIFFS[currentDiff];
+  let html = `<h3>${cfg.label}難度排行榜</h3>`;
+  if(list.length===0){
+    html += `<div class="lb-empty">還沒有人挑戰過，當第一個吧！</div>`;
+  } else {
+    list.slice(0,5).forEach((row, i)=>{
+      html += `<div class="lb-row"><span class="rank">${i+1}</span><span class="name">${row.name}</span><span class="time">${row.time}秒</span></div>`;
+    });
+  }
+  leaderboardEl.innerHTML = html;
+}
+function tryInsertScore(name, time, moves){
+  const data = loadLB();
+  const list = data[currentDiff] || [];
+  list.push({name, time, moves});
+  list.sort((a,b)=> a.time - b.time || a.moves - b.moves);
+  const top5 = list.slice(0,5);
+  data[currentDiff] = top5;
+  saveLB(data);
+  const rank = top5.findIndex(r=> r.name===name && r.time===time && r.moves===moves);
+  return rank; // -1 if not in top5
+}
 
 function renderDiffButtons(){
   diffRow.innerHTML = '';
@@ -262,6 +343,7 @@ function render(){
     gridEl.appendChild(card);
   });
   renderDiffButtons();
+  renderLeaderboard();
 }
 
 function spawnConfettiAt(el){
@@ -341,13 +423,39 @@ function launchFallingConfetti(){
   }
 }
 
+function startAutoCountdown(){
+  autoCountdown = AUTO_RESTART_SECONDS;
+  autoNote.textContent = `${autoCountdown} 秒後自動重新開始，讓下一位挑戰...`;
+  clearInterval(autoTimerId);
+  autoTimerId = setInterval(()=>{
+    autoCountdown--;
+    if(autoCountdown<=0){
+      clearInterval(autoTimerId);
+      newGame();
+    } else {
+      autoNote.textContent = `${autoCountdown} 秒後自動重新開始，讓下一位挑戰...`;
+    }
+  }, 1000);
+}
+
 function finish(won){
   clearInterval(timerId); timerId = null;
   const cfg = DIFFS[currentDiff];
+  const playerName = (nameInput.value || '').trim() || '訪客';
   resultTitle.textContent = won ? '全部配對完成！' : '時間到！';
-  resultStat.textContent = won
-    ? `${cfg.label}難度・花了 ${cfg.time-timeLeft} 秒、翻了 ${moves} 次，配對全部完成`
-    : `${cfg.label}難度・配對完成 ${matchedCount} / ${activePairs.length} 組，翻了 ${moves} 次`;
+  recordBadge.innerHTML = '';
+
+  if(won){
+    const timeUsed = cfg.time - timeLeft;
+    const rank = tryInsertScore(playerName, timeUsed, moves);
+    resultStat.textContent = `${cfg.label}難度・花了 ${timeUsed} 秒、翻了 ${moves} 次，配對全部完成`;
+    if(rank>=0){
+      recordBadge.innerHTML = `<span class="record-badge">\ud83c\udfc6 擠進排行榜第 ${rank+1} 名！</span>`;
+    }
+  } else {
+    resultStat.textContent = `${cfg.label}難度・配對完成 ${matchedCount} / ${activePairs.length} 組，翻了 ${moves} 次`;
+  }
+
   reasonsEl.innerHTML = '';
   activePairs.forEach(p=>{
     const div = document.createElement('div');
@@ -357,9 +465,11 @@ function finish(won){
   });
   overlay.classList.add('show');
   if(won) launchFallingConfetti();
+  startAutoCountdown();
 }
 
 function newGame(){
+  clearInterval(autoTimerId);
   const cfg = DIFFS[currentDiff];
   activePairs = pickPairs(cfg.pairs);
   deck = buildDeck();
@@ -371,6 +481,7 @@ function newGame(){
   clearInterval(timerId); timerId = null;
   startBtn.disabled = false;
   startBtn.textContent = '開始挑戰';
+  nameInput.value = '';
   render();
 }
 

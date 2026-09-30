@@ -425,6 +425,7 @@ function renderDiffButtons(){
     btn.innerHTML = `<b>${cfg.label}</b><span>${cfg.pairs*2}張・${cfg.time}秒</span>`;
     btn.onclick = ()=>{
       if(timerId) return;
+      playClick();
       currentDiff = key;
       newGame();
     };
@@ -491,6 +492,7 @@ function flip(idx){
 
   cardEl.classList.add('flipped');
   flippedCards.push(idx);
+  playFlip();
 
   if(flippedCards.length===2){
     moves++;
@@ -504,10 +506,12 @@ function flip(idx){
       if(isMatch){
         elA.classList.add('matched'); elB.classList.add('matched');
         spawnConfettiAt(elA); spawnConfettiAt(elB);
+        playMatch();
         matchedCount++;
         if(matchedCount===activePairs.length) finish(true);
       } else {
         elA.classList.remove('flipped'); elB.classList.remove('flipped');
+        playMismatch();
       }
       flippedCards = [];
       locked = false;
@@ -581,7 +585,7 @@ function finish(won){
     reasonsEl.appendChild(div);
   });
   overlay.classList.add('show');
-  if(won) launchFallingConfetti();
+  if(won){ launchFallingConfetti(); playWin(); }
   startAutoCountdown();
 }
 
@@ -612,6 +616,7 @@ function newGame(showTutorial){
 
 startBtn.onclick = ()=>{
   if(timerId) return;
+  playClick();
   hideHowto();
   timerId = setInterval(tick, 1000);
   startBtn.textContent = '挑戰中\u2026';
